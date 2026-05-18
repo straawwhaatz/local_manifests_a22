@@ -1,0 +1,93 @@
+name: Build AxionOS for Galaxy A22 4G
+
+on:
+  workflow_dispatch:
+    inputs:
+      BUILD_VARIANT:
+        description: 'Build variant'
+        required: true
+        default: 'userdebug'
+        type: choice
+        options:
+          - userdebug
+          - user
+          - eng
+      CLEAN_BUILD:
+        description: 'Clean build (wipes out directory)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  build:
+    name: Build AxionOS A22
+    runs-on: ubuntu-latest
+    timeout-minutes: 1440  # 24 hours
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Install Crave CLI ──────────────────────────────────────────────
+      - name: Setup Crave
+        run: |
+          mkdir -p $HOME/bin
+          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash
+          mv crave $HOME/bin/
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      # ── Write crave.conf from secrets ─────────────────────────────────
+      - name: Write crave.conf
+        run: |
+          cat > $HOME/.crave/crave.conf << EOF
+          username = ${{ secrets.CRAVE_USERNAME }}
+          token    = ${{ secrets.CRAVE_TOKEN }}
+          EOF
+
+      # ── Run the build on Crave servers ────────────────────────────────
+      - name: Run Crave Build
+        run: |
+          crave run --no-patch ${{ github.event.inputs.CLEAN_BUILD == 'true' && '--clean' || '' }} "
+
+            # ── Re-init with AxionOS 2.6 (lineage-23.2 = Android 16) ──
+            repo init -u https://github.com/AxionAOSP/android.git \
+                      -b lineage-23.2 \
+                      --git-lfs \
+                      --depth=1
+
+            # ── Clone local manifests (your device/vendor/kernel) ──────
+            rm -rf .repo/local_manifests
+            git clone https://github.com/straawwhaatz/local_manifests_a22 \
+                      .repo/local_manifests \
+                      -b main
+
+            # ── Sync source ────────────────────────────────────────────
+            /opt/crave/resync.sh
+
+            # ── Build ──────────────────────────────────────────────────
+            source build/envsetup.sh
+            breakfast a22 ${{ github.event.inputs.BUILD_VARIANT }}
+            mka bacon -j\$(nproc)
+          "
+
+      # ── Pull the ZIP from Crave devspace ──────────────────────────────
+      - name: Pull build artifacts
+        run: |
+          cd /crave-devspaces/*/
+          crave pull out/target/product/a22/*.zip || true
+          crave pull out/target/product/a22/*.img || true
+
+      # ── Upload to GitHub Actions artifacts ────────────────────────────
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: AxionOS-A22-${{ github.run_number }}
+          path: |
+            out/target/product/a22/*.zip
+            out/target/product/a22/boot.img
+            out/target/product/a22/recovery.img
+          if-no-files-found: warn
+          retention-days: 7
