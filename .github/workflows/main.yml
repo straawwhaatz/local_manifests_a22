@@ -42,8 +42,7 @@ jobs:
       # ── Write crave.conf from secrets ─────────────────────────────────
       - name: Write crave.conf
         run: |
-          mkdir -p $HOME/.crave
-          cat > $HOME/.crave/crave.conf << EOF
+          cat > $HOME/crave.conf << EOF
           username = ${{ secrets.CRAVE_USERNAME }}
           token    = ${{ secrets.CRAVE_TOKEN }}
           EOF
