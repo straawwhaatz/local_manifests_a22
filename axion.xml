@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+
+  <!-- Device Tree -->
+  <project
+    name="straawwhaatz/android_device_samsung_a22"
+    path="device/samsung/a22"
+    remote="github"
+    revision="lineage-23.2" />
+
+  <!-- Vendor Tree -->
+  <project
+    name="straawwhaatz/android_vendor_samsung_a22"
+    path="vendor/samsung/a22"
+    remote="github"
+    revision="lineage-23.2" />
+
+  <!-- Kernel Source -->
+  <project
+    name="straawwhaatz/kernel_samsung_a22"
+    path="kernel/samsung/a22"
+    remote="github"
+    revision="lineage-23.2" />
+
+</manifest>
